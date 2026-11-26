@@ -252,61 +252,109 @@ class BHInterpolator:
         return result
     
 
+    
     def get_H(self, B, temperature):
         """
-        자속밀도 B로부터 자계 H를 역보간.
+        B값으로부터 H를 수치적으로 역산한다.
 
-        B: T
-        temperature: ℃
-        return: A/m
+        평탄 구간에서는 가장 큰 H값을 선택한다.
         """
 
         if not np.isfinite(B) or B < 0:
-            raise ValueError("B는 0 이상의 유한한 값이어야 합니다.")
+            raise ValueError("B는 0 이상의 유효한 숫자여야 합니다.")
 
         temperature, lower_temp, upper_temp = (
             self._get_temperature_pair(temperature)
         )
 
-        def interpolate_H(temp):
-            H_data = self.curves[temp]["H"]
-            B_data = self.curves[temp]["B"]
-
-            if B > B_data[-1]:
-                raise ValueError(
-                    "입력 B가 B-H 데이터 범위를 초과했습니다."
-                )
-
-            # 동일한 B값을 그룹화하고 가장 큰 H 선택
-            unique_B, inverse = np.unique(
-                B_data,
-                return_inverse=True
-            )
-
-            max_H = np.full(len(unique_B), -np.inf)
-
-            np.maximum.at(max_H, inverse, H_data)
-
-            # 중복 제거된 데이터로 역방향 PCHIP 생성
-            inverse_pchip = PchipInterpolator(
-                unique_B,
-                max_H
-            )
-
-            return float(inverse_pchip(B))
-
-        H_lower = interpolate_H(lower_temp)
-
+        # get_B에서 공통으로 사용할 수 있는 H 범위
         if lower_temp == upper_temp:
-            return H_lower
+            H_min = self.curves[lower_temp]["H"][0]
+            H_max = self.curves[lower_temp]["H"][-1]
+        else:
+            H_min = max(
+                self.curves[lower_temp]["H"][0],
+                self.curves[upper_temp]["H"][0]
+            )
+            H_max = min(
+                self.curves[lower_temp]["H"][-1],
+                self.curves[upper_temp]["H"][-1]
+            )
 
-        H_upper = interpolate_H(upper_temp)
+        B_min = self.get_B(H_min, temperature)
+        B_max = self.get_B(H_max, temperature)
 
-        weight = (
-            (temperature - lower_temp)
-            / (upper_temp - lower_temp)
+        if B < B_min or B > B_max:
+            raise ValueError(
+                f"입력 B={B} T가 데이터 범위를 벗어났습니다. "
+                f"유효 범위: {B_min} ~ {B_max} T"
+            )
+
+        # Monotonic bisection: find the rightmost H
+        lower_H = H_min
+        upper_H = H_max
+
+        for _ in range(100):
+            middle_H = (lower_H + upper_H) / 2.0
+
+            B_calculated = self.get_B(
+                middle_H,
+                temperature
+            )
+
+            if B_calculated <= B:
+                lower_H = middle_H
+            else:
+                upper_H = middle_H
+
+        return float((lower_H + upper_H) / 2.0)
+
+    def check_flat_regions(self, temperature=25):
+        """
+        B-H 데이터의 평탄 구간을 진단한다.
+        """
+        temperature, lower_temp, upper_temp = (
+            self._get_temperature_pair(temperature)
         )
 
-        return float(
-            H_lower + weight * (H_upper - H_lower)
-        )
+        def find_flat_regions(temp):
+            B_data = self.curves[temp]["B"]
+            H_data = self.curves[temp]["H"]
+
+            delta_B = np.diff(B_data)
+            flat_indices = np.where(delta_B == 0)[0]
+
+            regions = []
+
+            if len(flat_indices) == 0:
+                return regions
+            start = flat_indices[0]
+            previous = flat_indices[0]
+
+            for index in flat_indices[1:]:
+                if index != previous + 1:
+                    regions.append({
+                        "B": float(B_data[start]),
+                        "H_start": float(H_data[start]),
+                        "H_end": float(H_data[previous + 1]),
+                        "data_count": int(previous + 2 - start)
+                    })
+                    start = index
+
+                previous = index
+
+            regions.append({
+                "B": float(B_data[start]),
+                "H_start": float(H_data[start]),
+                "H_end": float(H_data[previous + 1]),
+                "data_count": previous + 2 - start
+            })
+
+            return regions
+        return {
+            lower_temp: find_flat_regions(lower_temp),
+            **(
+                {upper_temp: find_flat_regions(upper_temp)}
+                if upper_temp != lower_temp else {}
+            )
+        }

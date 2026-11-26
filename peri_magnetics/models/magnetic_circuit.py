@@ -312,7 +312,7 @@ class MagneticCircuit:
         )
 
         phi_gap = result["B_gap"] * effective_gap_area
-        
+
         flux_error = abs(phi_core - phi_gap)
 
         # 2. 전체 MMF 오차
@@ -383,6 +383,7 @@ class MagneticCircuit:
 
         return float(effective_area)
 
+    
     def calculate_incremental_inductance(
         self,
         turns,
@@ -392,13 +393,16 @@ class MagneticCircuit:
         core_area,
         gap_area,
         temperature=25,
-        delta_current=0.01
+        delta_current=0.0001,
+        use_fringing=False,
+        core_width=None,
+        core_depth=None
     ):
         """
         DC Bias 동작점 주변의 미분 인덕턴스 계산.
 
         delta_current: 전류 미분 간격 (A)
-        return: H
+        return: 증분 인덕턴스 (H)
         """
 
         if current < 0:
@@ -416,7 +420,10 @@ class MagneticCircuit:
                 gap_length=gap_length,
                 core_area=core_area,
                 gap_area=gap_area,
-                temperature=temperature
+                temperature=temperature,
+                use_fringing=use_fringing,
+                core_width=core_width,
+                core_depth=core_depth
             )
 
             return result["flux"]
@@ -442,6 +449,8 @@ class MagneticCircuit:
             )
 
         return float(turns * d_flux_d_current)
+
+    
     def calculate_dc_bias_curve(
         self,
         turns,
@@ -453,7 +462,10 @@ class MagneticCircuit:
         current_end=4.0,
         current_step=0.5,
         temperature=25,
-        delta_current=0.01
+        delta_current=0.0001,
+        use_fringing=False,
+        core_width=None,
+        core_depth=None
     ):
         """
         DC Bias L-I Curve 데이터 생성.
@@ -491,7 +503,10 @@ class MagneticCircuit:
                 gap_length=gap_length,
                 core_area=core_area,
                 gap_area=gap_area,
-                temperature=temperature
+                temperature=temperature,
+                use_fringing=use_fringing,
+                core_width=core_width,
+                core_depth=core_depth
             )
 
             flux = operating_point["flux"]
@@ -509,7 +524,10 @@ class MagneticCircuit:
                 core_area=core_area,
                 gap_area=gap_area,
                 temperature=temperature,
-                delta_current=delta_current
+                delta_current=delta_current,
+                use_fringing=use_fringing,
+                core_width=core_width,
+                core_depth=core_depth
             )
 
             results.append({
