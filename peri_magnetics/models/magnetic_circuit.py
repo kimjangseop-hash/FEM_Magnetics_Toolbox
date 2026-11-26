@@ -456,20 +456,22 @@ class MagneticCircuit:
 
     
     def calculate_dc_bias_curve(
-        self,
-        turns,
-        core_length,
-        gap_length,
-        core_area,
-        gap_area,
-        current_start=0.0,
-        current_end=4.0,
-        current_step=0.5,
-        temperature=25,
-        delta_current=0.0001,
-        use_fringing=False,
-        core_width=None,
-        core_depth=None
+            self,
+            turns,
+            core_length,
+            gap_length,
+            core_area,
+            gap_area,
+            current_start=0.0,
+            current_end=4.0,
+            current_step=0.5,
+            temperature=25,
+            delta_current=0.0001,
+            use_fringing=False,
+            core_width=None,
+            core_depth=None,
+            tolerance=1e-10,
+            max_iterations=150
     ):
         """
         DC Bias L-I Curve 데이터 생성.
@@ -510,7 +512,9 @@ class MagneticCircuit:
                 temperature=temperature,
                 use_fringing=use_fringing,
                 core_width=core_width,
-                core_depth=core_depth
+                core_depth=core_depth,
+                tolerance=tolerance,
+                max_iterations=max_iterations
             )
 
             flux = operating_point["flux"]
@@ -531,7 +535,9 @@ class MagneticCircuit:
                 delta_current=delta_current,
                 use_fringing=use_fringing,
                 core_width=core_width,
-                core_depth=core_depth
+                core_depth=core_depth,
+                tolerance=tolerance,
+                max_iterations=max_iterations
             )
 
             results.append({
