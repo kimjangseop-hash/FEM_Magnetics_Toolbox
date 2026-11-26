@@ -81,3 +81,27 @@ femmt/examples/example_results
 
 # pyspelling
 dictionary.dic
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test and analysis cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# IDE and OS temporary files
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build and distribution
+htmlcov/
+.coverage
