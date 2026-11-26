@@ -396,7 +396,9 @@ class MagneticCircuit:
         delta_current=0.0001,
         use_fringing=False,
         core_width=None,
-        core_depth=None
+        core_depth=None,
+        tolerance=1e-10,
+        max_iterations=150
     ):
         """
         DC Bias 동작점 주변의 미분 인덕턴스 계산.
@@ -423,7 +425,9 @@ class MagneticCircuit:
                 temperature=temperature,
                 use_fringing=use_fringing,
                 core_width=core_width,
-                core_depth=core_depth
+                core_depth=core_depth,
+                tolerance=tolerance,
+                max_iterations=max_iterations
             )
 
             return result["flux"]
