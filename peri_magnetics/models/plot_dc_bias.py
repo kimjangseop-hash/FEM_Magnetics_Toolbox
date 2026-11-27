@@ -28,10 +28,28 @@ dc_results = mc.calculate_dc_bias_curve(
 
 
 # 결과 데이터 추출
-currents = [row["current"] for row in dc_results]
-L_diff = [row["L_diff"] * 1e6 for row in dc_results]
-B_core = [row["B_core"] for row in dc_results]
+valid_results = [
+    row for row in dc_results
+    if row["status"] == "success"
+]
 
+currents = [row["current"] for row in valid_results]
+
+L_diff = [
+    row["L_diff"] * 1e6
+    for row in valid_results
+]
+
+L_theory = [
+    row["L_theory"] * 1e6
+    for row in valid_results
+]
+
+B_core = [row["B_core"] for row in valid_results]
+validation_error = [
+    row["validation_error_percent"]
+    for row in valid_results
+]
 
 # DC Bias L-I 곡선
 plt.figure(figsize=(10, 6))
@@ -42,7 +60,13 @@ plt.plot(
     marker="o",
     label="Differential Inductance"
 )
-
+plt.plot(
+    currents,
+    L_theory,
+    marker="s",
+    linestyle="--",
+    label="Theoretical Differential Inductance"
+)
 plt.xlabel("DC Bias Current (A)")
 plt.ylabel("Differential Inductance (uH)")
 plt.title("DC Bias L-I Curve")
@@ -78,4 +102,34 @@ plt.savefig(
     dpi=300,
     bbox_inches="tight"
 )
+plt.show()
+# DC Bias Ldiff 검증 오차율 곡선
+plt.figure(figsize=(10, 6))
+
+plt.plot(
+    currents,
+    validation_error,
+    marker="o",
+    label="Ldiff Validation Error"
+)
+
+plt.axhline(
+    y=1.0,
+    linestyle="--",
+    label="Tolerance (1.0%)"
+)
+
+plt.xlabel("DC Bias Current (A)")
+plt.ylabel("Relative Error (%)")
+plt.title("DC Bias Ldiff Validation Error")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+
+plt.savefig(
+    "peri_magnetics/results/dc_bias_validation_error.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+
 plt.show()
