@@ -1,4 +1,5 @@
 import csv
+import re
 from pathlib import Path
 
 from peri_magnetics.models.bh_interpolation import BHInterpolator
@@ -170,6 +171,14 @@ class MaterialDatabase:
         )
 
         return bh_model
+
+    def get_available_temperatures(self, material_id):
+        """
+        실제 B-H 데이터 파일에 존재하는 온도 목록을 반환한다.
+        """
+        bh_model = self.create_bh_interpolator(material_id)
+
+        return bh_model.temperatures.copy()
     
     def validate_material(self, material_id):
         """
@@ -187,10 +196,19 @@ class MaterialDatabase:
             encoding="cp949"
         )
 
-        temperatures = [
-            float(temp)
-            for temp in material["available_temperatures_C"].split(";")
-        ]
+        temperatures = sorted({
+            float(match.group(1))
+            for column in df.columns
+            if (match := re.match(
+                r"^H\s*(-?\d+(?:\.\d+)?)℃\s*\(A/m\)$",
+                column
+            ))
+        })
+
+        if not temperatures:
+            raise ValueError(
+                "B-H 데이터 파일에서 온도별 H 데이터 열을 찾을 수 없습니다."
+            )
 
         required_columns = []
 

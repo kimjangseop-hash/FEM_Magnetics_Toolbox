@@ -25,16 +25,42 @@ class BHInterpolator:
             encoding="cp949"
         )
 
-        self.curves = {
-            25.0: {
-                "H": df["H 25℃ (A/m)"].to_numpy(dtype=float),
-                "B": df["B 25℃ (T)"].to_numpy(dtype=float),
-            },
-            100.0: {
-                "H": df["H 100℃ (A/m)"].to_numpy(dtype=float),
-                "B": df["B 100℃ (T)"].to_numpy(dtype=float),
-            },
-        }
+        import re
+
+        self.curves = {}
+
+        pattern = re.compile(
+            r"^H\s*(-?\d+(?:\.\d+)?)℃\s*\(A/m\)$"
+        )
+
+        for column in df.columns:
+            match = pattern.match(column)
+
+            if match is None:
+                continue
+
+            temperature = float(match.group(1))
+            b_column = f"B {temperature:g}℃ (T)"
+
+            if b_column not in df.columns:
+                raise ValueError(
+                    f"{temperature}℃ B 데이터 열이 없습니다."
+                )
+
+            if temperature in self.curves:
+                raise ValueError(
+                    f"{temperature}℃ 데이터가 중복되었습니다."
+                )
+
+            self.curves[temperature] = {
+                "H": df[column].to_numpy(dtype=float),
+                "B": df[b_column].to_numpy(dtype=float),
+            }
+
+        if not self.curves:
+            raise ValueError(
+                "CSV 파일에서 B-H 온도별 데이터 열을 찾을 수 없습니다."
+            )
 
         self.temperatures = sorted(self.curves.keys())
 
