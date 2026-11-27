@@ -517,6 +517,99 @@ class MagneticCircuit:
         return float(turns * d_flux_d_current)
 
     
+    def validate_incremental_inductance(
+        self,
+        turns,
+        current,
+        core_length,
+        gap_length,
+        core_area,
+        gap_area,
+        temperature=25,
+        delta_current=0.0001,
+        use_fringing=False,
+        core_width=None,
+        core_depth=None,
+        tolerance=1e-10,
+        max_iterations=150,
+        validation_tolerance_percent=1.0
+    ):
+        """
+        수치 미분 Ldiff와 투자율 기반 이론 Ldiff를 비교 검증한다.
+        """
+
+        # 1. 동작점 계산
+        operating_point = self.solve_operating_point_with_areas(
+            turns=turns,
+            current=current,
+            core_length=core_length,
+            gap_length=gap_length,
+            core_area=core_area,
+            gap_area=gap_area,
+            temperature=temperature,
+            tolerance=tolerance,
+            max_iterations=max_iterations,
+            use_fringing=use_fringing,
+            core_width=core_width,
+            core_depth=core_depth
+        )
+
+        # 2. 코어 미분 상대 투자율
+        H_core = operating_point["H_core"]
+        mu_diff = self.bh.get_mu_diff(H_core, temperature)
+
+        # 3. 유효 에어갭 면적
+        effective_gap_area = operating_point["effective_gap_area"]
+
+        # 4. 코어 및 에어갭 차동 릴럭턴스
+        R_core = core_length / (
+            core_area * self.mu0 * mu_diff
+        )
+
+        R_gap = gap_length / (
+            self.mu0 * effective_gap_area
+        )
+
+        # 5. 이론 Differential Inductance
+        L_theory = turns**2 / (R_core + R_gap)
+
+        # 6. 수치 미분 Differential Inductance
+        L_numerical = self.calculate_incremental_inductance(
+            turns=turns,
+            current=current,
+            core_length=core_length,
+            gap_length=gap_length,
+            core_area=core_area,
+            gap_area=gap_area,
+            temperature=temperature,
+            delta_current=delta_current,
+            use_fringing=use_fringing,
+            core_width=core_width,
+            core_depth=core_depth,
+            tolerance=tolerance,
+            max_iterations=max_iterations
+        )
+
+        # 7. 상대 오차
+        error_percent = (
+            abs(L_numerical - L_theory)
+            / abs(L_theory)
+            * 100
+        )
+
+        return {
+            "current": current,
+            "B_core": operating_point["B_core"],
+            "H_core": H_core,
+            "mu_diff": mu_diff,
+            "R_core": R_core,
+            "R_gap": R_gap,
+            "L_theory": L_theory,
+            "L_numerical": L_numerical,
+            "error_percent": error_percent,
+            "pass": error_percent <= validation_tolerance_percent
+        }
+
     
     def calculate_dc_bias_curve(
             self,
