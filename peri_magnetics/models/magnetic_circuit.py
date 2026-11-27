@@ -240,6 +240,68 @@ class MagneticCircuit:
                 "B-H 데이터의 계산 가능 범위를 초과했습니다."
             )
 
+        # B-H 데이터의 평탄 구간에서 MMF 불연속 검사
+        flat_regions = self.bh.check_flat_regions(
+            temperature=temperature
+        )
+
+        for regions in flat_regions.values():
+            for region in regions:
+
+                B_flat = float(region["B"])
+
+                epsilon = max(
+                    1e-10,
+                    abs(B_flat) * 1e-8
+                )
+
+                B_before = B_flat - epsilon
+
+                if B_before < 0:
+                    continue
+
+                B_gap_before = (
+                    B_before * core_area / effective_gap_area
+                )
+
+                B_gap_flat = (
+                    B_flat * core_area / effective_gap_area
+                )
+
+                mmf_before = (
+                    self.calculate_core_mmF(
+                        B_before,
+                        core_length,
+                        temperature
+                    )
+                    + self.calculate_gap_mmF(
+                        B_gap_before,
+                        gap_length
+                    )
+                )
+
+                mmf_flat = (
+                    self.calculate_core_mmF(
+                        B_flat,
+                        core_length,
+                        temperature
+                    )
+                    + self.calculate_gap_mmF(
+                        B_gap_flat,
+                        gap_length
+                    )
+                )
+
+                if mmf_before < target_mmf < mmf_flat:
+                    raise ValueError(
+                        f"B-H 평탄 구간의 MMF 불연속으로 "
+                        f"계산할 수 없습니다. "
+                        f"B={B_flat} T, "
+                        f"MMF 범위={mmf_before:.6f}~"
+                        f"{mmf_flat:.6f} A-turn, "
+                        f"목표 MMF={target_mmf:.6f} A-turn"
+                    )
+
         for iteration in range(1, max_iterations + 1):
 
             phi = (phi_low + phi_high) / 2
