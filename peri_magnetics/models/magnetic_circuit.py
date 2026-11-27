@@ -517,6 +517,7 @@ class MagneticCircuit:
         return float(turns * d_flux_d_current)
 
     
+    
     def calculate_dc_bias_curve(
             self,
             turns,
@@ -539,6 +540,7 @@ class MagneticCircuit:
         DC Bias L-I Curve 데이터 생성.
 
         전류별 동작점, 자속량, 할선 및 미분 인덕턴스 계산.
+        계산 실패 지점은 오류 정보와 함께 기록하고 다음 전류로 진행.
         """
 
         if current_start < 0 or current_end < current_start:
@@ -564,51 +566,68 @@ class MagneticCircuit:
 
         for current in currents:
 
-            operating_point = self.solve_operating_point_with_areas(
-                turns=turns,
-                current=float(current),
-                core_length=core_length,
-                gap_length=gap_length,
-                core_area=core_area,
-                gap_area=gap_area,
-                temperature=temperature,
-                use_fringing=use_fringing,
-                core_width=core_width,
-                core_depth=core_depth,
-                tolerance=tolerance,
-                max_iterations=max_iterations
-            )
+            current = float(current)
 
-            flux = operating_point["flux"]
+            try:
+                operating_point = self.solve_operating_point_with_areas(
+                    turns=turns,
+                    current=current,
+                    core_length=core_length,
+                    gap_length=gap_length,
+                    core_area=core_area,
+                    gap_area=gap_area,
+                    temperature=temperature,
+                    use_fringing=use_fringing,
+                    core_width=core_width,
+                    core_depth=core_depth,
+                    tolerance=tolerance,
+                    max_iterations=max_iterations
+                )
 
-            if current > 0:
-                L_secant = turns * flux / current
-            else:
-                L_secant = float("nan")
+                flux = operating_point["flux"]
 
-            L_diff = self.calculate_incremental_inductance(
-                turns=turns,
-                current=float(current),
-                core_length=core_length,
-                gap_length=gap_length,
-                core_area=core_area,
-                gap_area=gap_area,
-                temperature=temperature,
-                delta_current=delta_current,
-                use_fringing=use_fringing,
-                core_width=core_width,
-                core_depth=core_depth,
-                tolerance=tolerance,
-                max_iterations=max_iterations
-            )
+                if current > 0:
+                    L_secant = turns * flux / current
+                else:
+                    L_secant = float("nan")
 
-            results.append({
-                "current": float(current),
-                "B_core": operating_point["B_core"],
-                "B_gap": operating_point["B_gap"],
-                "flux": flux,
-                "L_secant": L_secant,
-                "L_diff": L_diff
-            })
+                L_diff = self.calculate_incremental_inductance(
+                    turns=turns,
+                    current=current,
+                    core_length=core_length,
+                    gap_length=gap_length,
+                    core_area=core_area,
+                    gap_area=gap_area,
+                    temperature=temperature,
+                    delta_current=delta_current,
+                    use_fringing=use_fringing,
+                    core_width=core_width,
+                    core_depth=core_depth,
+                    tolerance=tolerance,
+                    max_iterations=max_iterations
+                )
+
+                results.append({
+                    "current": current,
+                    "B_core": operating_point["B_core"],
+                    "B_gap": operating_point["B_gap"],
+                    "flux": flux,
+                    "L_secant": L_secant,
+                    "L_diff": L_diff,
+                    "status": "success",
+                    "error": None
+                })
+
+            except Exception as exc:
+                results.append({
+                    "current": current,
+                    "B_core": None,
+                    "B_gap": None,
+                    "flux": None,
+                    "L_secant": None,
+                    "L_diff": None,
+                    "status": "error",
+                    "error": str(exc)
+                })
 
         return results
