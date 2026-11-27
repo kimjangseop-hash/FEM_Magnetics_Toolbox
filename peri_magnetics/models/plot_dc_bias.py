@@ -1,5 +1,7 @@
 
 import matplotlib.pyplot as plt
+import csv
+from pathlib import Path
 
 from peri_magnetics.models.bh_interpolation import BHInterpolator
 from peri_magnetics.models.magnetic_circuit import MagneticCircuit
@@ -35,7 +37,7 @@ for temp in temperatures:
     )
 
     temperature_results[temp] = dc_results
-    
+
 # 온도별 DC Bias CSV 저장
 saved_temperature_files = export_temperature_dc_bias_csv(
     temperature_results
@@ -52,6 +54,83 @@ for temp, results in temperature_results.items():
         row for row in results
         if row["status"] == "success"
     ]
+
+# 온도별 DC Bias 종합 비교 데이터
+comparison_data = []
+
+reference_temperature = 25
+
+reference_results = {
+    row["current"]: row
+    for row in temperature_data[reference_temperature]
+}
+
+for temp, results in temperature_data.items():
+    for row in results:
+        current = row["current"]
+
+        if current not in reference_results:
+            continue
+
+        reference_row = reference_results[current]
+
+        L_reference = reference_row["L_diff"]
+        L_current = row["L_diff"]
+
+        inductance_change_percent = (
+            (L_current - L_reference)
+            / L_reference
+            * 100
+        )
+
+        temperature_coefficient = (
+            inductance_change_percent
+            / (temp - reference_temperature)
+            if temp != reference_temperature
+            else 0.0
+        )
+
+        comparison_data.append({
+            "temperature": temp,
+            "current": current,
+            "B_core": row["B_core"],
+            "L_diff": L_current,
+            "inductance_change_percent": inductance_change_percent,
+            "temperature_coefficient_percent_per_C": temperature_coefficient
+        })
+
+# 온도별 DC Bias 종합 비교 CSV 저장
+comparison_path = (
+    Path(__file__).resolve().parents[1]
+    / "results"
+    / "temperature_dc_bias_comparison.csv"
+)
+
+comparison_path.parent.mkdir(parents=True, exist_ok=True)
+
+fieldnames = [
+    "temperature",
+    "current",
+    "B_core",
+    "L_diff",
+    "inductance_change_percent",
+    "temperature_coefficient_percent_per_C"
+]
+
+with open(
+    comparison_path,
+    mode="w",
+    newline="",
+    encoding="utf-8-sig"
+) as file:
+    writer = csv.DictWriter(
+        file,
+        fieldnames=fieldnames
+    )
+    writer.writeheader()
+    writer.writerows(comparison_data)
+
+print(f"온도별 종합 비교 CSV 저장 완료: {comparison_path}")
 
 # 결과 데이터 추출
 valid_results = [
@@ -220,6 +299,46 @@ plt.tight_layout()
 
 plt.savefig(
     "peri_magnetics/results/temperature_dc_bias_BI.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+
+plt.show()
+# 온도별 DC Bias 인덕턴스 변화율 그래프
+
+plt.figure(figsize=(10, 6))
+
+for temp in sorted(temperature_data.keys()):
+    results = [
+        row for row in comparison_data
+        if row["temperature"] == temp
+    ]
+
+    currents_temp = [
+        row["current"] for row in results
+    ]
+
+    change_percent = [
+        row["inductance_change_percent"]
+        for row in results
+    ]
+
+    plt.plot(
+        currents_temp,
+        change_percent,
+        marker="o",
+        label=f"{temp}℃"
+    )
+
+plt.xlabel("DC Bias Current (A)")
+plt.ylabel("Inductance Change (%)")
+plt.title("Temperature-dependent Inductance Change")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+
+plt.savefig(
+    "peri_magnetics/results/temperature_inductance_change.png",
     dpi=300,
     bbox_inches="tight"
 )
