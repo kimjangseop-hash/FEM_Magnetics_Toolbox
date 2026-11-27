@@ -1,0 +1,2 @@
+material_id,manufacturer,material_name,bh_data_file,available_temperatures_C,data_source,notes
+TDK_PC40,TDK,PC40,TDK/PC40.csv,"25;100",manufacturer_table_derived,"Manufacturer table-derived data; not direct physical measurement"
