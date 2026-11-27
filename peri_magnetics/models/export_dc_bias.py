@@ -28,6 +28,9 @@ def export_dc_bias_csv(results, filename="dc_bias_results.csv"):
         "flux",
         "L_secant",
         "L_diff",
+        "L_theory",
+        "validation_error_percent",
+        "validation_status",
         "status",
         "error"
     ]

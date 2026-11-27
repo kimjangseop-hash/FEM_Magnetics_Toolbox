@@ -627,7 +627,8 @@ class MagneticCircuit:
             core_width=None,
             core_depth=None,
             tolerance=1e-10,
-            max_iterations=150
+            max_iterations=150,
+            validation_tolerance_percent=1.0
     ):
         """
         DC Bias L-I Curve 데이터 생성.
@@ -699,6 +700,22 @@ class MagneticCircuit:
                     tolerance=tolerance,
                     max_iterations=max_iterations
                 )
+                validation = self.validate_incremental_inductance(
+                    turns=turns,
+                    current=current,
+                    core_length=core_length,
+                    gap_length=gap_length,
+                    core_area=core_area,
+                    gap_area=gap_area,
+                    temperature=temperature,
+                    delta_current=delta_current,
+                    use_fringing=use_fringing,
+                    core_width=core_width,
+                    core_depth=core_depth,
+                    tolerance=tolerance,
+                    max_iterations=max_iterations,
+                    validation_tolerance_percent=validation_tolerance_percent
+                )
 
                 results.append({
                     "current": current,
@@ -707,6 +724,11 @@ class MagneticCircuit:
                     "flux": flux,
                     "L_secant": L_secant,
                     "L_diff": L_diff,
+                    "L_theory": validation["L_theory"],
+                    "validation_error_percent": validation["error_percent"],
+                    "validation_status": (
+                    "PASS" if validation["pass"] else "FAIL"
+                    ),
                     "status": "success",
                     "error": None
                 })
@@ -719,6 +741,9 @@ class MagneticCircuit:
                     "flux": None,
                     "L_secant": None,
                     "L_diff": None,
+                    "L_theory": None,
+                    "validation_error_percent": None,
+                    "validation_status": "NOT_CHECKED",
                     "status": "error",
                     "error": str(exc)
                 })
