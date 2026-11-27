@@ -63,6 +63,101 @@ class MaterialDatabase:
             f"등록되지 않은 재료입니다: {material_id}"
         )
 
+    def search_by_manufacturer(self, manufacturer):
+        """
+        제조사 이름으로 등록된 재료를 검색한다.
+        대소문자를 구분하지 않는다.
+        """
+
+        materials = self.load_materials()
+
+        results = [
+            material
+            for material in materials
+            if material["manufacturer"].strip().casefold()
+            == manufacturer.strip().casefold()
+        ]
+
+        return results
+
+    def search_by_name(self, material_name):
+        """
+        재료명으로 등록된 재료를 검색한다.
+        대소문자를 구분하지 않는다.
+        """
+
+        materials = self.load_materials()
+
+        results = [
+            material
+            for material in materials
+            if material["material_name"].strip().casefold()
+            == material_name.strip().casefold()
+        ]
+
+        return results
+
+    def search_by_id(self, material_id):
+        """
+        재료 ID로 등록된 재료를 검색한다.
+        """
+
+        materials = self.load_materials()
+
+        results = [
+            material
+            for material in materials
+            if material["material_id"].strip().casefold()
+            == material_id.strip().casefold()
+        ]
+
+        return results
+
+    def print_materials(self, materials):
+        """
+        검색된 재료 목록을 표 형태로 출력한다.
+        """
+
+        if not materials:
+            print("검색된 재료가 없습니다.")
+            return
+
+        print("-" * 65)
+        print(
+            f"{'재료 ID':<18}"
+            f"{'제조사':<15}"
+            f"{'재료명':<15}"
+            f"{'지원 온도':<15}"
+        )
+        print("-" * 65)
+
+        for material in materials:
+            print(
+                f"{material['material_id']:<18}"
+                f"{material['manufacturer']:<15}"
+                f"{material['material_name']:<15}"
+                f"{material['available_temperatures_C']:<15}"
+            )
+
+        print("-" * 65)
+
+    def select_material(self, material_id):
+        """
+        재료 ID를 입력받아 해당 재료의 B-H 계산기를 생성한다.
+        """
+
+        material = self.get_material(material_id)
+
+        bh_model = self.create_bh_interpolator(material_id)
+
+        print(
+            f"선택된 재료: "
+            f"{material['manufacturer']} "
+            f"{material['material_name']}"
+        )
+
+        return bh_model
+
     def create_bh_interpolator(self, material_id):
         """
         선택한 재료의 B-H 데이터를 불러와 계산기를 생성한다.
