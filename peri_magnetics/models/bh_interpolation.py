@@ -309,52 +309,62 @@ class BHInterpolator:
 
         return float((lower_H + upper_H) / 2.0)
 
+
     def check_flat_regions(self, temperature=25):
         """
-        B-H 데이터의 평탄 구간을 진단한다.
+        지정 온도의 B-H 보간 곡선에서 평탄 구간을 진단한다.
         """
+
         temperature, lower_temp, upper_temp = (
             self._get_temperature_pair(temperature)
         )
 
-        def find_flat_regions(temp):
-            B_data = self.curves[temp]["B"]
-            H_data = self.curves[temp]["H"]
+        # 해당 온도의 B-H 곡선 생성
+        H_data = self.curves[lower_temp]["H"]
+        B_lower = self.curves[lower_temp]["B"]
 
-            delta_B = np.diff(B_data)
-            flat_indices = np.where(delta_B == 0)[0]
+        if lower_temp == upper_temp:
+            B_data = B_lower
+        else:
+            B_upper = self.curves[upper_temp]["B"]
 
-            regions = []
-
-            if len(flat_indices) == 0:
-                return regions
-            start = flat_indices[0]
-            previous = flat_indices[0]
-
-            for index in flat_indices[1:]:
-                if index != previous + 1:
-                    regions.append({
-                        "B": float(B_data[start]),
-                        "H_start": float(H_data[start]),
-                        "H_end": float(H_data[previous + 1]),
-                        "data_count": int(previous + 2 - start)
-                    })
-                    start = index
-
-                previous = index
-
-            regions.append({
-                "B": float(B_data[start]),
-                "H_start": float(H_data[start]),
-                "H_end": float(H_data[previous + 1]),
-                "data_count": previous + 2 - start
-            })
-
-            return regions
-        return {
-            lower_temp: find_flat_regions(lower_temp),
-            **(
-                {upper_temp: find_flat_regions(upper_temp)}
-                if upper_temp != lower_temp else {}
+            weight = (
+                (temperature - lower_temp)
+                / (upper_temp - lower_temp)
             )
-        }
+
+            B_data = (
+                B_lower + weight * (B_upper - B_lower)
+            )
+
+        delta_B = np.diff(B_data)
+        flat_indices = np.where(delta_B == 0)[0]
+
+        regions = []
+
+        if len(flat_indices) == 0:
+            return {}
+
+        start = flat_indices[0]
+        previous = flat_indices[0]
+
+        for index in flat_indices[1:]:
+            if index != previous + 1:
+                regions.append({
+                    "B": float(B_data[start]),
+                    "H_start": float(H_data[start]),
+                    "H_end": float(H_data[previous + 1]),
+                    "data_count": int(previous + 2 - start)
+                })
+                start = index
+
+            previous = index
+
+        regions.append({
+            "B": float(B_data[start]),
+            "H_start": float(H_data[start]),
+            "H_end": float(H_data[previous + 1]),
+            "data_count": int(previous + 2 - start)
+        })
+
+        return {temperature: regions}
