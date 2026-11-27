@@ -51,3 +51,21 @@ def export_dc_bias_csv(results, filename="dc_bias_results.csv"):
         writer.writerows(results)
 
     return output_path
+def export_temperature_dc_bias_csv(temperature_results):
+    """
+    온도별 DC Bias 결과를 개별 CSV 파일로 저장한다.
+    """
+
+    saved_files = {}
+
+    for temperature, results in temperature_results.items():
+        filename = f"dc_bias_{temperature}C.csv"
+
+        output_path = export_dc_bias_csv(
+            results,
+            filename=filename
+        )
+
+        saved_files[temperature] = output_path
+
+    return saved_files

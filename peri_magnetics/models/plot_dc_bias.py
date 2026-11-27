@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 from peri_magnetics.models.bh_interpolation import BHInterpolator
 from peri_magnetics.models.magnetic_circuit import MagneticCircuit
+from peri_magnetics.models.export_dc_bias import export_temperature_dc_bias_csv
 
 
 # 자기회로 모델 생성
@@ -34,6 +35,14 @@ for temp in temperatures:
     )
 
     temperature_results[temp] = dc_results
+    
+# 온도별 DC Bias CSV 저장
+saved_temperature_files = export_temperature_dc_bias_csv(
+    temperature_results
+)
+
+for temp, path in saved_temperature_files.items():
+    print(f"{temp}℃ CSV 저장 완료: {path}")
 
 # 온도별 DC Bias 결과 추출
 temperature_data = {}
